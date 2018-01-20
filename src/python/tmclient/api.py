@@ -21,6 +21,8 @@ import re
 import json
 import glob
 import shutil
+import base64
+from io import BytesIO
 try:
     # NOTE: Python3 no longer has the cStringIO module
     from cStringIO import StringIO
@@ -1643,6 +1645,9 @@ class TmClient(HttpClient):
             self.experiment_name, mapobject_type_name, plate_name, well_name,
             well_pos_y, well_pos_x, tpoint, zplane
         )
+        npz_file = BytesIO()
+        np.savez_compressed(npz_file, segmentation=image)
+        npz_file_str = base64.b64encode(npz_file.getvalue())
         content = {
             'plate_name': plate_name,
             'well_name': well_name,
@@ -1650,7 +1655,7 @@ class TmClient(HttpClient):
             'well_pos_y': well_pos_y,
             'tpoint': tpoint,
             'zplane': zplane,
-            'image': image.tolist()
+            'npz_file': npz_file_str
         }
         mapobject_type_id = self._get_mapobject_type_id(mapobject_type_name)
         url = self._build_api_url(
