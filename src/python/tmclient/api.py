@@ -1647,7 +1647,7 @@ class TmClient(HttpClient):
         )
         npz_file = BytesIO()
         np.savez_compressed(npz_file, segmentation=image)
-        npz_file_str = base64.b64encode(npz_file.getvalue())
+        npz_file_str = base64.encodestring(npz_file.getvalue())
         content = {
             'plate_name': plate_name,
             'well_name': well_name,
