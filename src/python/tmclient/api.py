@@ -1647,7 +1647,16 @@ class TmClient(HttpClient):
         )
         npz_file = BytesIO()
         np.savez_compressed(npz_file, segmentation=image)
-        npz_file_str = base64.encodestring(npz_file.getvalue())
+        npz_file_str = base64.b64encode(npz_file.getvalue())
+        if sys.version_info.major == 3:
+            # to perform a post request with the requests library the json
+            # content has to be serializable.
+            # Python3's base64 encoding algorithm produces, given a byte stream
+            # input, a byte stream output - which is not serializable.
+            # The following line of code decodes the byte stream into a string.
+            # Note: Python2's base64 encoding algorithm directly produces a
+            # string!
+            npz_file_str = npz_file_str.decode('utf-8')
         content = {
             'plate_name': plate_name,
             'well_name': well_name,
