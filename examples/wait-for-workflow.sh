@@ -6,8 +6,8 @@ me="$(basename $0)"
 ## defaults
 
 host='localhost'
-port=8002
-username='devuser'
+port=80
+username="$USER"
 password='123456'
 
 background='n'
@@ -278,7 +278,7 @@ EOF
 fi
 
 while true; do
-    tm_client workflow -e "${name}" status 1>"$tmp" 2>"$tmp"
+    tm_client workflow -e "${name}" status 1>"$tmp" 2>&1
 
     # check status; example `tm_client` output:
     #

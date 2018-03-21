@@ -116,11 +116,15 @@ def check_imagemagick_supported_format(fmt):
     fmt = fmt.lower()
     if not fmt.startswith('.'):
         fmt = '.' + fmt
-    delegate = SUPPORTED_IMAGE_FORMATS[fmt]
+    try:
+        delegate = SUPPORTED_IMAGE_FORMATS[fmt]
+    except KeyError:
+        logger.error("Image format `%s` not supported by `tm_client`.")
+        return False
     if delegate in supported:
         return True
     else:
-        logger.error("Format `%s` not in ImageMagick's `convert` delegates.")
+        logger.error("Image format `%s` not in ImageMagick's `convert` delegates.")
         return False
 
 
@@ -270,7 +274,7 @@ class TmClient(HttpClient):
             client(args)
         except Exception as err:
             if args.verbosity < 4:
-                logger.error(str(err).lower())
+                logger.error(str(err))
                 sys.exit(1)
             else:
                 raise
@@ -1144,9 +1148,9 @@ class TmClient(HttpClient):
         )
         if convert:
             # FIXME: This checks that `convert` can handle the
-            # *destination* image format, but it could be lack support
-            # for the *source* image format... But the source images
-            # are many and, in principle, they could be of many
+            # *destination* image format, but it could be lacking
+            # support for the *source* image format... But the source
+            # images are many and, in principle, they could be of many
             # different formats...
             if not check_imagemagick_supported_format(convert):
                 logger.fatal(

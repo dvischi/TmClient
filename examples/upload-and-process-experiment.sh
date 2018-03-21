@@ -60,17 +60,23 @@ EX_USAGE=1
 EX_DATAERR=65
 EX_NOINPUT=66
 
+
 die () {
   rc="$1"
   shift
-  (echo -n "$me: ERROR: ";
-      if [ $# -gt 0 ]; then echo "$@"; else cat; fi) 1>&2
+  (
+      echo -n "${TXT_BOLD}$me: ${TXT_RED}ERROR:${TXT_NOCOLOR} ";
+      if [ $# -gt 0 ]; then echo "$@"; else cat; fi
+      echo -n "${TXT_NORMAL}"
+  ) 1>&2
   exit $rc
 }
 
 warn () {
-  (echo -n "$me: WARNING: ";
-      if [ $# -gt 0 ]; then echo "$@"; else cat; fi) 1>&2
+    (
+        echo -n "$me: ${TXT_YELLOW}WARNING:${TXT_NOCOLOR} ";
+        if [ $# -gt 0 ]; then echo "$@"; else cat; fi
+    ) 1>&2
 }
 
 have_command () {
@@ -82,6 +88,41 @@ require_command () {
     die $EX_USAGE "Could not find required command '$1' in system PATH. Aborting."
   fi
 }
+
+# color text output
+if have_command tput; then
+    TXT_NORMAL=$(tput sgr0)
+
+    TXT_BOLD=$(tput bold)
+    TXT_DIM=$(tput dim)
+    TXT_STANDOUT=$(tput smso)
+
+    TXT_BLACK=$(tput setaf 0)
+    TXT_BLUE=$(tput setaf 4)
+    TXT_CYAN=$(tput setaf 6)
+    TXT_GREEN=$(tput setaf 2)
+    TXT_MAGENTA=$(tput setaf 5)
+    TXT_RED=$(tput setaf 1)
+    TXT_WHITE=$(tput setaf 7)
+    TXT_YELLOW=$(tput setaf 3)
+    TXT_NOCOLOR=$(tput op)
+else
+    TXT_NORMAL=''
+
+    TXT_BOLD=''
+    TXT_DIM=''
+    TXT_STANDOUT=''
+
+    TXT_BLACK=''
+    TXT_BLUE=''
+    TXT_CYAN=''
+    TXT_GREEN=''
+    TXT_MAGENTA=''
+    TXT_RED=''
+    TXT_WHITE=''
+    TXT_YELLOW=''
+    TXT_NOCOLOR=''
+fi
 
 
 ## parse command-line
@@ -117,7 +158,13 @@ while [ $# -gt 0 ]; do
         --pass|-p) shift; password="$1" ;;
         --port|-P) shift; port="$1" ;;
         --user|-u) shift; username="$1" ;;
-        --wait|-w) wait='y' ;;
+        --wait|-w)
+            if have_command watch; then
+                wait=='y'
+            else
+                warn "Option '--wait' requires the 'watch' command, which is not available on this system. Ignoring it."
+            fi
+            ;;
         --analysis|-a) analysis='y' ;;
         --help|-h) usage; exit 0 ;;
         --) shift; break ;;
@@ -164,9 +211,9 @@ require_command watch
 
 # shortcut
 tm_client () {
-    echo "== Running: tm_client -H '${host}' -P '${port}' -u '${username}' -p '${password}' $@ ..."
+    echo "== Running: ${TXT_STANDOUT}tm_client -H '${host}' -P '${port}' -u '${username}' -p '${password}' $@ ${TXT_NORMAL}..."
     command \
-        time --format="... Summary: exitcode %x,  %E elapsed (%es = %Us user + %Ss system), max %MkB memory" \
+        time --format="${TXT_DIM}... Summary: exitcode %x,  %E elapsed (%es = %Us user + %Ss system), max %MkB memory${TXT_NORMAL}" \
         tm_client -H "${host}" -P "${port}" -u "${username}" -p "${password}" "$@";
 }
 
@@ -192,7 +239,7 @@ for plate_dir in "${datadir}"/plates/*; do
         fi
         acquisition_name=$(basename "$acquisition_dir")
         tm_client acquisition -e "${name}" create -p "$plate_name" -n "$acquisition_name"
-        tm_client microscope-file -e "${name}" upload -p "$plate_name" -a "$acquisition_name" --directory "$acquisition_dir"
+        tm_client microscope-file -e "${name}" upload -p "$plate_name" -a "$acquisition_name" "$acquisition_dir"
     done
 done
 
@@ -203,7 +250,7 @@ tm_client workflow -e "${name}" upload --file "${datadir}/workflow.yaml"
 # Upload jterator project description:
 
 if [ "$analysis" = 'y']; then
-  tm_client jtproject -e "${name}" upload --directory "${datadir}/jtproject"
+  tm_client jtproject -e "${name}" upload "${datadir}/jtproject"
 fi
 
 # Submit workflow:
@@ -213,7 +260,5 @@ tm_client workflow -e "${name}" submit
 # Check workflow:
 
 if [ "$wait" = 'y' ]; then
-    while true; do
-        tm_client workflow -e "${name}" status
-    done
+    exec watch -d -n 60 "tm_client workflow -e '${name}' status"
 fi
